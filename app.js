@@ -35,7 +35,7 @@
    const url=new URL(endpoint);url.searchParams.set('mm_origin',global.location.origin);url.searchParams.set('mm_channel',channel);
    const attempt=new Promise((resolve,reject)=>{
     waitReady={resolve,reject};
-    connectTimer=setTimeout(()=>{if(frame){frame.remove();frame=null;}ready=false;waitReady=null;reject(new Error('เชื่อม Backend ไม่สำเร็จ: ตรวจไฟล์ bridge, เวอร์ชัน deployment และ ALLOWED_FRONTEND_ORIGINS จากนั้นเปิดการเชื่อมต่อ Google แล้วลองใหม่'));},config.connectTimeout||20000);
+    connectTimer=setTimeout(()=>{if(frame){frame.remove();frame=null;}ready=false;waitReady=null;reject(new Error('เชื่อม Backend ไม่สำเร็จ: ตรวจ Script Properties ให้ ALLOWED_FRONTEND_ORIGINS = '+global.location.origin+' (ไม่มี path หรือ / ปิดท้าย) แล้วเปิดการเชื่อมต่อ Google หากแก้โค้ด Backend ต้อง Deploy เวอร์ชันใหม่ก่อน'));},config.connectTimeout||20000);
     frame=global.document.createElement('iframe');frame.title='MM data connection';frame.setAttribute('aria-hidden','true');frame.tabIndex=-1;frame.style.cssText='display:none';frame.src=url.href;global.document.body.appendChild(frame);
    });
    const wrapped=attempt.catch(e=>{if(connecting===wrapped)connecting=null;throw e;});connecting=wrapped;return wrapped;
@@ -68,7 +68,7 @@ const PAGES={dashboard:['ภาพรวมการบำรุงรักษ�
 const state={page:'dashboard',month:new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Bangkok'}).slice(0,7),data:{machines:[],contracts:[],maintenance:[],settings:[],history:[],pending_operations:[],summary:{}},search:'',filters:{},report:null};
 let busy=false,dirty=false,dates=[],contractContext=null,previewKeySaved='',toastTimer;
 const opId=()=>crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'_'+Math.random().toString(36).slice(2);
-function rpc(name,p){return connection.call(name,GOOGLE_SHEET_URL,p);}
+function rpc(name,p){if(!/^https:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_-]+\/edit(?:[?#].*)?$/.test(GOOGLE_SHEET_URL)||GOOGLE_SHEET_URL.includes('YOUR_SPREADSHEET_ID'))return Promise.reject(new Error('ยังไม่ได้ตั้งค่าฐานข้อมูล: ใส่ URL Google Sheets จริงใน index.html ที่ window.MM_CONFIG.googleSheetUrl และกำหนด ID เดียวกันใน ALLOWED_SPREADSHEET_ID ของ Apps Script'));return connection.call(name,GOOGLE_SHEET_URL,p);}
 function notify(msg){$('toast').textContent=msg;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,7000);}
 function error(e,id='connection'){const n=$(id);n.hidden=false;n.className='alert error';n.textContent=e.message||e;}
 async function load(){const bar=$('connection');bar.hidden=false;bar.className='alert';bar.textContent='กำลังโหลดข้อมูล…';try{state.data=await rpc('getAppData',{month:state.month});bar.className='alert success';bar.textContent='เชื่อมต่อฐานข้อมูลแล้ว · อัปเดต '+new Date().toLocaleTimeString('th-TH',{timeZone:'Asia/Bangkok'});if(state.data.pending_operations.length){bar.className='alert';bar.textContent='มีรายการบันทึกไม่ครบ กรุณากู้คืนใน Settings ก่อนบันทึกรายการใหม่';}render();}catch(e){error(e);render();}}

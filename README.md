@@ -32,3 +32,8 @@ node .\tests\pages.cjs
 ผลล่าสุด 37 + 10 = 47 กรณีผ่านใน simulation ไม่ใช่การรับรองการเชื่อม Google จริง
 
 ยังรอ repository เป้าหมายและ URL ของ Google Sheets ที่ผู้ใช้ยืนยัน จึงยังไม่ได้เผยแพร่ Pages หรือ redeploy Apps Script จริง ดูข้อจำกัดและผลทดสอบใน [TEST_REPORT.md](TEST_REPORT.md)
+
+
+## แก้การเชื่อมต่อฐานข้อมูลจริง
+
+ตั้งค่า Sheet URL และ origin ของเว็บไซต์แล้ว ดู [CONNECTION_FIX.md](CONNECTION_FIX.md) สำหรับขั้นตอนอัปเดต Backend และ Deploy เวอร์ชันใหม่

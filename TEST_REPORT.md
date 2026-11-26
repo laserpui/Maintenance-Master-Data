@@ -71,3 +71,8 @@
 - Source ที่ docs/ ตรงกับ root; ชุดทดสอบอัปเดตให้อ่านไฟล์ใหม่
 - รัน regression หลังจัดไฟล์: 37/37 และ adapter tests 10/10 ผ่าน รวม 47 กรณี
 - เป็นการจัดโครงสร้างไฟล์ ไม่เปลี่ยน Business Rules/schema หรือ deploy ออนไลน์
+
+
+## แก้การเชื่อมต่อด้วย URL ที่ยืนยันแล้ว
+
+ตรวจเว็บจริงพบ Backend ปฏิเสธ origin และหน้าเว็บยังใช้ placeholder จึงตั้ง Sheet ID และ whitelist ของ https://laserpui.github.io ใน source เพิ่ม regression ค่าตั้งต้น 2 กรณี ผล 37 + 12 = 49 กรณีผ่านใน simulation ยังไม่ได้ redeploy Apps Script หรือทดสอบข้อมูลจริง

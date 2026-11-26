@@ -1,4 +1,10 @@
 /** Maintenance Management v2.0 — Google Apps Script V8. */
+// Installation defaults confirmed by the user. No database rows are created here.
+const MM_DEPLOYMENT = Object.freeze({
+ spreadsheetId: '1sS6RpP8xzNCGpQ-QnJNvWhcVhYSiw5KYOwgkQYsbsLQ',
+ frontendOrigins: ['https://laserpui.github.io']
+});
+
 const SCHEMA = Object.freeze({
   Machines: 'maintenance_code brand model serial_number customer_name site_name phone contact_name service_area customer_type install_date machine_status notes created_at updated_at revision'.split(' '),
   Contracts: 'contract_id maintenance_code contract_type start_date duration_months end_date pm_per_year first_pm_date total_rounds contract_status is_package po_number qt_number notes created_at updated_at revision'.split(' '),
@@ -19,7 +25,8 @@ function doGet(e) {
 }
 function allowedFrontendOrigin_(origin) {
  if(!/^https:\/\/[a-z0-9.-]+(?::[0-9]+)?$/i.test(origin))return false;
- return (PropertiesService.getScriptProperties().getProperty('ALLOWED_FRONTEND_ORIGINS')||'').split(',').map(x=>x.trim()).includes(origin);
+ const configured=(PropertiesService.getScriptProperties().getProperty('ALLOWED_FRONTEND_ORIGINS')||'').split(',').map(x=>x.trim()).filter(Boolean);
+ return MM_DEPLOYMENT.frontendOrigins.concat(configured).includes(origin);
 }
 function bridgeCall(url,method,payload) {
  const functions={setupDatabase,getAppData,previewSchedule,saveMachine,saveContract,saveMaintenance,saveSetting,getMonthlyReport,retryOperation};
@@ -44,7 +51,7 @@ function openDatabase_(url) {
  const active=Session.getActiveUser().getEmail(), effective=Session.getEffectiveUser().getEmail();
  if(active && effective && active!==effective)fail_('กรุณา deploy แบบ Execute as user accessing the web app');
  const m=/^https:\/\/docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]+)\/edit(?:[?#].*)?$/.exec(String(url));
- const allowed=PropertiesService.getScriptProperties().getProperty('ALLOWED_SPREADSHEET_ID');
+ const allowed=PropertiesService.getScriptProperties().getProperty('ALLOWED_SPREADSHEET_ID')||MM_DEPLOYMENT.spreadsheetId;
  if(!m||!allowed||m[1]!==allowed||/YOUR_SPREADSHEET_ID/.test(m[1])) fail_('URL ฐานข้อมูลไม่ถูกต้องหรือยังไม่ได้ตั้งค่า GOOGLE_SHEET_URL / ALLOWED_SPREADSHEET_ID');
  return SpreadsheetApp.openByUrl('https://docs.google.com/spreadsheets/d/'+allowed+'/edit');
 }
