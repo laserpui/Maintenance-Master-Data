@@ -37,3 +37,6 @@ node .\tests\pages.cjs
 ## แก้การเชื่อมต่อฐานข้อมูลจริง
 
 ตั้งค่า Sheet URL และ origin ของเว็บไซต์แล้ว ดู [CONNECTION_FIX.md](CONNECTION_FIX.md) สำหรับขั้นตอนอัปเดต Backend และ Deploy เวอร์ชันใหม่
+
+
+ช่องกรอกวันที่ใช้ **DD/MM/YYYY (ค.ศ.)** เช่น `26/11/2026` และยังเลือกจากปฏิทินได้

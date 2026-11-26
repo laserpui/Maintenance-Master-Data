@@ -1,0 +1,14 @@
+'use strict';
+const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert/strict');
+const root=path.resolve(__dirname,'..'),app=fs.readFileSync(path.join(root,'app.js'),'utf8');
+const source=app.slice(app.indexOf('/* Date entry uses'),app.indexOf('/* MM APPLICATION */'));
+const window={};vm.runInNewContext(source,{window});const {toISO,format}=window.MMDate;
+assert.equal(toISO('26/11/2026'),'2026-11-26');
+assert.equal(toISO('03/04/2027'),'2027-04-03');
+assert.equal(toISO('29/02/2028'),'2028-02-29');
+assert.equal(format('2026-11-26'),'26/11/2026');
+assert.equal(toISO(format('2027-01-31')),'2027-01-31');
+assert.equal(toISO(''),'');assert.equal(format(''),'');
+for(const value of ['31/02/2026','29/02/2027','00/11/2026','26/13/2026','11/26/2026','2026-11-26','3/4/2027'])assert.throws(()=>toISO(value));
+assert.ok(app.includes('data-date-input'));assert.ok(app.includes('showPicker'));assert.ok(app.includes('p[n.name]=iso'));
+console.log('DD/MM/YYYY parsing, leap year, ambiguity, blank values and invalid dates: PASS');
