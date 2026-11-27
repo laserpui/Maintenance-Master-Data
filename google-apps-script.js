@@ -133,6 +133,7 @@ function generateSchedule_(p) {
  for(let i=0;i<600;i++){const s=addMonths_(first,(explicit?i:i+1)*12/per); if(s>end)break; if(s>=start)dates.push(s);} return dates;
 }
 function previewSchedule(url,p) {openDatabase_(url); const dates=generateSchedule_(p); return {dates,total:dates.length,end_date:p.end_date||addMonths_(p.start_date,Number(p.duration_months))};}
+function protectedRound_(r) { return TERMINAL.includes(r.status)||Number(r.revision)>1||!!(r.appointment_date||r.actual_pm_date||r.job_number||r.reason||r.notes); }
 function contractChanges_(p,d,code) {
  const old=p.contract_id?d.Contracts.find(x=>x.contract_id===p.contract_id):null; if(p.contract_id&&!old)fail_('ไม่พบสัญญา'); if(old&&old.maintenance_code!==code)fail_('เครื่องไม่ตรงกับสัญญา'); revision_(old,p);
  const c={contract_id:old?old.contract_id:uuid_(),maintenance_code:code,contract_type:p.contract_type,start_date:date_(p.start_date),duration_months:integer_(p.duration_months,1,600,'ระยะเวลา'),end_date:date_(p.end_date),pm_per_year:integer_(p.pm_per_year,1,4,'PM ต่อปี'),first_pm_date:date_(p.first_pm_date,true),total_rounds:0,contract_status:p.contract_status||'ACTIVE',is_package:bool_(p.is_package),po_number:text_(p.po_number),qt_number:text_(p.qt_number),notes:text_(p.notes),created_at:old?old.created_at:timestamp_(),updated_at:timestamp_(),revision:old?Number(old.revision)+1:1};
@@ -143,11 +144,28 @@ function contractChanges_(p,d,code) {
  dates.forEach((s,i)=>{if(s<c.start_date||s>c.end_date||i&&s<=dates[i-1])fail_('รอบ PM ต้องอยู่ในสัญญา เรียงวัน และไม่ซ้ำ');});
  if(d.Contracts.some(x=>x.contract_id!==c.contract_id&&x.maintenance_code===code&&x.contract_status==='ACTIVE'&&c.contract_status==='ACTIVE'&&x.start_date<=c.end_date&&x.end_date>=c.start_date)){admin_(); if(!bool_(p.confirm_overlap)||!text_(p.change_reason))fail_('สัญญาทับซ้อน ต้องให้ผู้ดูแลยืนยันพร้อมเหตุผล');}
  const existing=old?d.Maintenance.filter(x=>x.contract_id===c.contract_id&&x.round_no!=='').sort((a,b)=>Number(a.round_no)-Number(b.round_no)):[];
- // Contract edits are explicit append-only extensions. Existing round numbers/dates remain immutable.
- if(old){if(!bool_(p.confirm_extension)||!text_(p.change_reason))fail_('การแก้สัญญาต้องยืนยันผลกระทบและเหตุผล'); if(c.start_date!==old.start_date||c.end_date<old.end_date||c.contract_type!==old.contract_type)fail_('แก้สัญญาเดิมได้โดยขยายระยะ/เพิ่มรอบเท่านั้น'); if(dates.length<existing.length||existing.some((r,i)=>dates[i]!==r.original_due_date))fail_('ห้ามลบ สลับ หรือเปลี่ยนวันของรอบเดิม ให้เลื่อนนัดที่ Maintenance');}
+ // Editing keeps IDs and round numbers; protected work history cannot be rewritten.
+ const edit=old&&p.edit_mode==='EDIT';
+ if(old){
+  if(!(edit?bool_(p.confirm_edit):bool_(p.confirm_extension))||!text_(p.change_reason))fail_('การแก้สัญญาต้องยืนยันผลกระทบและระบุเหตุผล');
+  if(!edit&&(c.start_date!==old.start_date||c.end_date<old.end_date||c.contract_type!==old.contract_type))fail_('การขยายสัญญาต้องคงประเภทและวันเริ่มเดิม หากต้องการแก้ข้อมูลให้ใช้แก้ไขสัญญา');
+  if(dates.length<existing.length)fail_('ห้ามลบรอบเดิมที่บันทึกไว้ ให้กำหนดไม่ต้องทำ/ยกเลิกที่ Maintenance พร้อมเหตุผล');
+  existing.forEach((r,i)=>{if(dates[i]!==r.original_due_date){
+   if(!edit)fail_('ห้ามเปลี่ยนกำหนดเดิมจากการขยายสัญญา');
+   if(protectedRound_(r))fail_('รอบ '+r.round_no+' มีประวัติการดำเนินงานแล้ว ให้เลื่อนนัดที่ Maintenance แทนการเปลี่ยนกำหนดเดิม');
+  }});
+ }
+ if(c.first_pm_date&&(c.first_pm_date<c.start_date||c.first_pm_date>c.end_date))fail_('วัน PM ครั้งแรกต้องอยู่ในสัญญา');
  c.total_rounds=dates.length;
  const changes=[{sheet:'Contracts',before:old,after:c}];
- existing.forEach(r=>{if(Number(r.round_total)!==dates.length)changes.push({sheet:'Maintenance',before:r,after:Object.assign({},r,{round_total:dates.length,updated_at:timestamp_(),revision:Number(r.revision)+1})});});
+ existing.forEach((r,i)=>{
+  const changedDate=dates[i]!==r.original_due_date;
+  if(Number(r.round_total)!==dates.length||changedDate){
+   const after=Object.assign({},r,{round_total:dates.length,updated_at:timestamp_(),revision:Number(r.revision)+1});
+   if(changedDate){after.original_due_date=dates[i];after.status=dates[i]<=today_()?'PENDING':'UPCOMING';}
+   changes.push({sheet:'Maintenance',before:r,after});
+  }
+ });
  dates.slice(existing.length).forEach((s,i)=>changes.push({sheet:'Maintenance',before:null,after:{pm_id:uuid_(),contract_id:c.contract_id,maintenance_code:code,round_no:existing.length+i+1,round_total:dates.length,original_due_date:s,appointment_date:'',actual_pm_date:'',status:s<=today_()?'PENDING':'UPCOMING',job_number:'',reason:'',po_number:c.po_number,qt_number:c.qt_number,is_package:c.is_package,has_attachment:false,notes:'',created_at:timestamp_(),updated_at:timestamp_(),revision:1}})); return changes;
 }
 function saveMachine(url,p) { return mutate_(url,p,d=>{const old=p.edit_code?d.Machines.find(x=>x.maintenance_code===p.edit_code):null; if(p.edit_code&&!old)fail_('ไม่พบเครื่อง'); revision_(old,p); const m=cleanMachine_(p,old,d); const changes=[{sheet:'Machines',before:old,after:m}]; if(p.contract){if(old)fail_('กรุณาเพิ่มสัญญาจากรายละเอียดเครื่อง'); changes.push(...contractChanges_(p.contract,d,m.maintenance_code));} return changes;}); }
