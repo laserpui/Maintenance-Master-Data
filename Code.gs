@@ -188,7 +188,7 @@ function report_(d,f,now) {
  const b=monthBounds_(f.month||now.slice(0,7)), machine=Object.fromEntries(d.Machines.map(m=>[m.maintenance_code,m])), contracts=Object.fromEntries(d.Contracts.map(c=>[c.contract_id,c]));
  const open=p=>!['NOT_REQUIRED','COMPLETED','CANCELLED'].includes(p.status);
  const groupKey=p=>JSON.stringify([p.maintenance_code,p.contract_id]);
- const scheduled=new Set(d.Maintenance.filter(p=>p.original_due_date>=b.start&&p.original_due_date<=b.end).map(groupKey));
+ const scheduled=new Set(d.Maintenance.filter(p=>p.original_due_date.slice(5,7)===b.start.slice(5,7)).map(groupKey));
  const earliest=new Map();
  d.Maintenance.filter(p=>contracts[p.contract_id]&&open(p)&&p.original_due_date<=b.end).forEach(p=>{const k=groupKey(p),old=earliest.get(k);if(!old||Number(p.round_no)<Number(old.round_no)||Number(p.round_no)===Number(old.round_no)&&p.original_due_date<old.original_due_date)earliest.set(k,p);});
  const rows=Array.from(earliest.values()).filter(p=>{const c=contracts[p.contract_id];return scheduled.has(groupKey(p))&&(f.include_carry!==false||p.original_due_date>=b.start)&&(f.include_demo!==false||c.contract_type!=='DEMO')&&(!f.last_only||Number(p.round_no)===Number(p.round_total));}).map(p=>({pm:p,m:machine[p.maintenance_code],c:contracts[p.contract_id],carry:p.original_due_date<b.start}));
