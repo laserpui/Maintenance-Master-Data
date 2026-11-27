@@ -1,0 +1,13 @@
+'use strict';
+const fs=require('fs'),path=require('path'),assert=require('assert/strict');
+const source=fs.readFileSync(path.join(__dirname,'run.cjs'),'utf8').split('let passed=0;')[0];
+const {added,update,machine,plan}=new Function('require','__dirname',source+'\nreturn {added,update,machine,plan};')(require,__dirname);
+const url='https://docs.google.com/spreadsheets/d/test_database/edit';
+const e=added({first_pm_date:'2026-01-01'});let rounds=e.data().Maintenance;const dates=rounds.map(p=>p.original_due_date);update(e,rounds[0],{status:'COMPLETED',actual_pm_date:'2026-01-01'});
+const report=month=>e.call('getMonthlyReport',url,{month});
+assert.equal(report('2026-04').items[0].pm_id,rounds[1].pm_id);assert.equal(report('2026-07').items[0].pm_id,rounds[1].pm_id);assert.equal(report('2026-08').count,0);assert.equal(report('2026-10').count,1);
+const saved=update(e,e.data().Maintenance[1],{is_package:true,has_attachment:true,notes:'CSV "ไทย",\nบรรทัดใหม่',view_month:'2026-07'});assert.deepEqual(saved.data,e.call('getAppData',url,{month:'2026-07'}));
+assert.ok(!report('2026-07').text.includes('[Package]'));assert.ok(!report('2026-07').text.includes('(เอกสารแนบ)'));assert.equal(e.data().Maintenance[1].is_package,true);assert.equal(e.data().Maintenance[1].has_attachment,true);
+update(e,e.data().Maintenance[1],{status:'COMPLETED',actual_pm_date:'2026-04-01'});assert.equal(report('2026-07').items[0].pm_id,rounds[2].pm_id);assert.deepEqual(e.data().Maintenance.map(p=>p.original_due_date),dates);
+const m=machine('SECOND');m.serial_number='002';m.contract=plan(e,{first_pm_date:'2026-01-01'});e.call('saveMachine',url,m);assert.equal(report('2026-07').count,2);
+const a=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');const fn=a.slice(a.indexOf('function csvText('),a.indexOf('function exportCSV('));const csv=new Function(fn+';return csvText;')();const out=csv([{name:'ไทย,"x"\ny',id:'001',formula:'=1+1'}]);assert.ok(out.includes('"ไทย,""x""\ny"'));assert.ok(out.includes('"001"'));assert.ok(out.includes("\"'=1+1\""));assert.ok(a.includes('reset-search'));assert.ok(!a.includes('มีงานเปิดอยู่'));console.log('PASS scheduled months, earliest carry, progression, independent machines, immutable dates, flags preserved, saved snapshot equivalence, CSV escaping and formula safety');
