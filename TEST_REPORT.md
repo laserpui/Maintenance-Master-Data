@@ -72,10 +72,23 @@
 - รัน regression หลังจัดไฟล์: 37/37 และ adapter tests 10/10 ผ่าน รวม 47 กรณี
 - เป็นการจัดโครงสร้างไฟล์ ไม่เปลี่ยน Business Rules/schema หรือ deploy ออนไลน์
 
+## ผลตรวจและแก้การเชื่อมต่อจากเว็บจริง
 
-## แก้การเชื่อมต่อด้วย URL ที่ยืนยันแล้ว
+- เว็บไซต์ https://laserpui.github.io/Maintenance-Master-Data/ ตอบ HTTP 200 แต่ยังใช้ placeholder ของ Sheet
+- ตรวจ Backend ด้วย origin ของเว็บไซต์จริง: ตอบ “ไม่อนุญาตเว็บไซต์ต้นทาง” เป็นสาเหตุที่ bridge ไม่ตอบ ready
+- ใส่ Sheet ID ที่ผู้ใช้ยืนยันแล้วใน root/docs index และ Backend defaults กำหนด exact origin เป็น https://laserpui.github.io
+- เตรียม Code.gs สำเนา Backend สำหรับติดตั้ง ตรวจตรงกับ google-apps-script.js
+- Regression ผ่าน 37/37 + adapter/config tests 12/12 รวม 49 กรณีใน simulation
+- ยังไม่ได้อ่าน/เขียนข้อมูลใน Google Sheets จริง และยังไม่ได้แก้ Script Properties หรือ redeploy Apps Script
+- พยายาม push ไป repository เดิม แต่ automatic approval review ปฏิเสธการเผยแพร่โค้ด/Spreadsheet ID จึงยังไม่อัปเดต GitHub และต้องรอผู้ใช้ยืนยัน
 
-ตรวจเว็บจริงพบ Backend ปฏิเสธ origin และหน้าเว็บยังใช้ placeholder จึงตั้ง Sheet ID และ whitelist ของ https://laserpui.github.io ใน source เพิ่ม regression ค่าตั้งต้น 2 กรณี ผล 37 + 12 = 49 กรณีผ่านใน simulation ยังไม่ได้ redeploy Apps Script หรือทดสอบข้อมูลจริง
+## ตรวจการติดตั้งจริง — 26 พฤศจิกายน 2569
+
+ผู้ใช้ยืนยันบัญชีผู้ดูแลและอนุมัติ Setup Database แล้ว ตั้ง ADMIN_EMAILS ตามบัญชีที่ผู้ใช้อนุมัติ พร้อม ALLOWED_FRONTEND_ORIGINS=https://laserpui.github.io และ ALLOWED_SPREADSHEET_ID ตามไฟล์ฐานข้อมูลที่ผู้ใช้ระบุ
+
+กด Setup Database จาก GitHub Pages จริงสำเร็จ ตรวจพบ Machines, Contracts, Maintenance, History, Settings ใน Google Sheets และหัวตาราง Machines ตรงตาม schema หน้าเว็บแสดง “เชื่อมต่อฐานข้อมูลแล้ว” และ Dashboard ทุกตัวนับเป็น 0 / ยังไม่มีข้อมูลเครื่อง ไม่มีการเพิ่มข้อมูลตัวอย่างหรือทดสอบงานเขียนเครื่อง/สัญญา/PM ในฐานข้อมูลจริง
+
+การแก้ครั้งนี้ใช้ Script Properties ที่ deployment เดิมอ่านได้ทันที จึงไม่จำเป็นต้อง redeploy เพื่อแก้การเชื่อมต่อ ส่วน source defaults ใน repository มีไว้สำหรับติดตั้งครั้งใหม่ การทดสอบเพิ่ม/แก้ข้อมูลจริง สองบัญชีพร้อมกัน และสิทธิ์ Viewer ยังคงเป็นการตรวจที่ต้องทำแยกจากการ Setup นี้
 
 
 ## ช่องกรอกวันที่ DD/MM/YYYY
@@ -86,3 +99,8 @@
 ## แก้ไขสัญญาและข้อมูลเดิม — 27 พฤศจิกายน 2569
 
 Backend เพิ่มโหมดแก้สัญญาโดยตรวจเหตุผลและการยืนยันผลกระทบ เก็บ contract_id/pm_id และเลขรอบเดิม รอบที่มีประวัติการดำเนินงานเก็บวันกำหนดเดิมไว้ ใช้วันนัดใน Maintenance สำหรับการเลื่อนงาน ป้องกันการลบรอบเดิมและตรวจ revision/overlap เหมือนเดิม Regression 37 กรณีและ contract editing 8 กรณีผ่านใน simulation ไม่มีการแก้ไขหรือสร้างข้อมูล production ในการทดสอบ
+
+
+## สถานะส่งต่อวันที่ 27 พฤศจิกายน 2569
+
+Contract editing 8/8 และ adapter/config 12/12 ผ่าน ตรวจ source ที่วางใน Apps Script ตรงกับ source ที่ทดสอบ ผู้ใช้อนุมัติการเปลี่ยน execution/access แล้ว เผยแพร่ Backend เวอร์ชัน 3 สำเร็จ วันที่ 27 พฤศจิกายน 2569 เวลา 09:11 และตรวจจาก GitHub Pages ว่าเชื่อมต่อฐานข้อมูลจริงได้ แสดงเครื่องเดิม 4 รายการ การทดสอบบันทึกการแก้ไขทำบน local memory-only database ไม่มีการแก้ไขข้อมูลลูกค้าจริงระหว่างตรวจออนไลน์
